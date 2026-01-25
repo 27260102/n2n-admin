@@ -1,0 +1,21 @@
+# Binaries
+backend/n2n_admin
+backend/n2n_admin.db
+backend/*.log
+backend/persistent.log
+
+# Build outputs
+backend/dist/
+frontend/dist/
+
+# Dependencies
+node_modules/
+go.sum
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
