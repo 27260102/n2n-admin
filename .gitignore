@@ -3,6 +3,8 @@ backend/n2n_admin
 backend/n2n_admin.db
 backend/*.log
 backend/persistent.log
+n2n_admin_persistent.log
+记事本.txt
 
 # Build outputs
 backend/dist/

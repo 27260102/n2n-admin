@@ -35,7 +35,7 @@
 ### 2. 编译与安装
 ```bash
 # 克隆仓库
-git clone https://github.com/your-username/n2n-admin.git
+git clone https://github.com/27260102/n2n-admin.git
 cd n2n-admin
 
 # 一键构建 (自动处理前后端编译与静态资源嵌入)
