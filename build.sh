@@ -22,7 +22,7 @@ npm run build
 echo "[2/2] Building Backend (Go)..."
 cd "$BASE_DIR/backend"
 go mod tidy
-go build -ldflags="-s -w" -o n2n_admin main.go
+go build -ldflags="-s -w" -o n2n_admin .
 
 echo ""
 echo "======================================="

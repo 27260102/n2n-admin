@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, Form, Input, Button, message, Typography, Row, Col, Alert, Space } from 'antd';
 import { SaveOutlined, ReloadOutlined, ProfileOutlined } from '@ant-design/icons';
 import { systemApi } from '../api';
+import axios from 'axios';
 
 const { Title, Text } = Typography;
 
@@ -11,49 +12,50 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [snLoading, setSnLoading] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const logEndRef = useRef<HTMLDivElement>(null);
+  const [version, setVersion] = useState('v1.x.x');
+  const logContainerRef = useRef<HTMLDivElement>(null);
 
-  const fetchSettings = async () => {
+  const fetchData = async () => {
     try {
-      const { data } = await systemApi.getSettings();
-      globalForm.setFieldsValue(data);
+      const [settingsRes, snRes, healthRes] = await Promise.all([
+        systemApi.getSettings(),
+        systemApi.getSnConfig(),
+        axios.get('/api/health')
+      ]);
+      globalForm.setFieldsValue(settingsRes.data);
+      snForm.setFieldsValue(snRes.data);
+      setVersion(healthRes.data.version || 'v1.2.2');
     } catch (error) {
       console.error('Failed to fetch settings');
     }
   };
 
-  const fetchSnConfig = async () => {
+  const fetchLogs = async () => {
     try {
-      const { data } = await systemApi.getSnConfig();
-      snForm.setFieldsValue(data);
+      const { data } = await systemApi.getRecentLogs();
+      setLogs(data.logs || []);
     } catch (error) {
-      message.warning('无法读取 Supernode 配置文件');
+      console.error('Failed to fetch logs');
     }
   };
 
   useEffect(() => {
-    fetchSettings();
-    fetchSnConfig();
+    fetchData();
+    fetchLogs();
 
-    const token = localStorage.getItem('n2n_token');
-    const eventSource = new EventSource(`/api/supernode/logs?token=${token}`);
-    
-    eventSource.onmessage = (event) => {
-      setLogs((prevLogs) => [...prevLogs.slice(-199), event.data]);
-    };
-
-    eventSource.onerror = () => {
-      console.error('EventSource failed');
-      eventSource.close();
-    };
+    // 使用轮询代替 EventSource，避免 token 暴露在 URL 中
+    const logTimer = setInterval(fetchLogs, 3000);
 
     return () => {
-      eventSource.close();
+      clearInterval(logTimer);
     };
   }, []);
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // 只在日志容器内部滚动到底部，不影响页面滚动位置
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
   }, [logs]);
 
   const onGlobalFinish = async (values: any) => {
@@ -111,7 +113,7 @@ const Settings: React.FC = () => {
               name="supernode_host" 
               label="Supernode 服务地址 (Host:Port)" 
               rules={[{ required: true }]}
-              extra="此地址将写入生成的 edge.conf。请确保客户端能通过该地址访问到本服务器（支持域名或 IP）。"
+              extra="此地址将写入生成的 edge.conf。请确保客户端能通过该地址访问到本服务器。"
             >
               <Input placeholder="1.2.3.4:7654" />
             </Form.Item>
@@ -147,17 +149,20 @@ const Settings: React.FC = () => {
         </Card>
 
         <Card title={<span><ProfileOutlined /> Supernode 实时日志</span>} bordered={false}>
-          <div style={{ 
-            background: '#1e1e1e', 
-            color: '#d4d4d4', 
-            padding: '15px', 
-            borderRadius: '4px',
-            fontFamily: "'Fira Code', 'Courier New', monospace",
-            fontSize: '13px',
-            height: '400px',
-            overflowY: 'auto',
-            whiteSpace: 'pre-wrap'
-          }}>
+          <div
+            ref={logContainerRef}
+            style={{
+              background: '#1e1e1e',
+              color: '#d4d4d4',
+              padding: '15px',
+              borderRadius: '4px',
+              fontFamily: "'Fira Code', 'Courier New', monospace",
+              fontSize: '13px',
+              height: '400px',
+              overflowY: 'auto',
+              whiteSpace: 'pre-wrap'
+            }}
+          >
             {logs.length > 0 ? (
               logs.map((log, index) => (
                 <div key={index} style={{ marginBottom: '2px', borderBottom: '1px solid #333' }}>
@@ -167,7 +172,6 @@ const Settings: React.FC = () => {
             ) : (
               <div style={{ color: '#666' }}>正在连接日志流...</div>
             )}
-            <div ref={logEndRef} />
           </div>
           <div style={{ marginTop: 10, textAlign: 'right' }}>
             <Text type="secondary">仅显示最近 200 条记录</Text>
@@ -175,7 +179,7 @@ const Settings: React.FC = () => {
         </Card>
 
         <Card title="关于系统" bordered={false}>
-          <Text type="secondary">n2n Web UI v1.2.0 (Full Features)</Text>
+          <Text type="secondary">n2n Web UI {version}</Text>
         </Card>
       </Space>
     </div>

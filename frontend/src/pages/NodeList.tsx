@@ -126,7 +126,11 @@ const NodeList: React.FC = () => {
       title: '虚拟 IP',
       dataIndex: 'ip_address',
       key: 'ip_address',
-      render: (ip: string) => <Tag color="blue" style={{ fontFamily: 'monospace' }}>{ip}</Tag>,
+      render: (ip: string) => (
+        <Text copyable style={{ fontFamily: 'monospace' }}>
+          <Tag color="blue" style={{ fontFamily: 'monospace', marginRight: 0 }}>{ip}</Tag>
+        </Text>
+      ),
     },
     {
       title: '外网出口 (GeoIP)',
@@ -190,7 +194,19 @@ const NodeList: React.FC = () => {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={nodes} rowKey={(record) => record.id || record.mac_address} loading={loading} />
+      <Table
+        columns={columns}
+        dataSource={nodes}
+        rowKey={(record) => record.id || record.mac_address}
+        loading={loading}
+        pagination={{
+          defaultPageSize: 20,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showTotal: (total) => `共 ${total} 个节点`
+        }}
+        scroll={{ x: 1000 }}
+      />
 
       {/* 登记节点 Modal */}
       <Modal

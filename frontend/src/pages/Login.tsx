@@ -53,9 +53,6 @@ const Login: React.FC = () => {
               </Button>
             </Form.Item>
           </Form>
-          <div style={{ textAlign: 'center', fontSize: '12px', color: '#999' }}>
-            默认密码: admin / admin123
-          </div>
         </Card>
       </Content>
     </Layout>
