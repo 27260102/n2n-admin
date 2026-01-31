@@ -34,6 +34,22 @@ func NextIP(ip net.IP) net.IP {
 	return next
 }
 
+// CompareIP compares two IP addresses numerically
+// Returns: -1 if a < b, 0 if a == b, 1 if a > b
+func CompareIP(a, b net.IP) int {
+	a = a.To16()
+	b = b.To16()
+	for i := 0; i < len(a); i++ {
+		if a[i] < b[i] {
+			return -1
+		}
+		if a[i] > b[i] {
+			return 1
+		}
+	}
+	return 0
+}
+
 // WriteCommunityList writes a list of communities to a file
 func WriteCommunityList(filePath string, communities []string) error {
 	content := strings.Join(communities, "\n")

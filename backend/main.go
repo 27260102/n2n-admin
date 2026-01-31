@@ -15,6 +15,7 @@ import (
 	"n2n_ui/backend/utils"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -448,8 +449,10 @@ func main() {
 			corsConfig.AllowOrigins = strings.Split(appConfig.CORSOrigins, ",")
 		}
 	} else {
-		// 默认只允许同源请求（不设置 AllowOrigins 则拒绝跨域）
-		corsConfig.AllowOrigins = []string{}
+		// 默认只允许同源请求：使用自定义函数验证 Origin 与 Host 匹配
+		corsConfig.AllowOriginFunc = func(origin string) bool {
+			return false // 拒绝所有跨域请求
+		}
 	}
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsConfig))
@@ -556,6 +559,17 @@ func getNodes(c *gin.Context) {
 		})
 		}
 	}
+	// 按 IP 地址数值排序
+	sort.Slice(res, func(i, j int) bool {
+		ipA := res[i].(gin.H)["ip_address"].(string)
+		ipB := res[j].(gin.H)["ip_address"].(string)
+		a := net.ParseIP(ipA)
+		b := net.ParseIP(ipB)
+		if a == nil || b == nil {
+			return ipA < ipB
+		}
+		return utils.CompareIP(a, b) < 0
+	})
 	c.JSON(200, res)
 }
 func login(c *gin.Context) {
@@ -732,12 +746,24 @@ func createNode(c *gin.Context) {
 		// 自动分配 IP
 		if comm.Range != "" {
 			if baseIP, _, err := net.ParseCIDR(comm.Range); err == nil {
-				var last models.Node
-				db.Where("community = ?", n.Community).Order("ip_address desc").First(&last)
-				if last.IPAddress == "" {
+				var nodes []models.Node
+				db.Where("community = ?", n.Community).Find(&nodes)
+				if len(nodes) == 0 {
 					n.IPAddress = utils.NextIP(utils.NextIP(baseIP)).String()
 				} else {
-					n.IPAddress = utils.NextIP(net.ParseIP(last.IPAddress)).String()
+					// 找出最大的 IP 地址（按数值比较）
+					var maxIP net.IP
+					for _, node := range nodes {
+						ip := net.ParseIP(node.IPAddress)
+						if ip != nil && (maxIP == nil || utils.CompareIP(ip, maxIP) > 0) {
+							maxIP = ip
+						}
+					}
+					if maxIP != nil {
+						n.IPAddress = utils.NextIP(maxIP).String()
+					} else {
+						n.IPAddress = utils.NextIP(utils.NextIP(baseIP)).String()
+					}
 				}
 			}
 		}
